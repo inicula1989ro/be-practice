@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: mag-be
+    runtime: node
+    plan: free
+    branch: main
+    # NODE_ENV=production (set below, for runtime) also affects npm during
+    # the build step — npm skips devDependencies under it by default, which
+    # is where typescript and all the @types/* packages live, so the build
+    # fails without --include=dev forcing them in anyway.
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /products
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mag-be-db
+          property: connectionString
+      # Update this once mag-fe is deployed — set to its real URL so the
+      # browser's CORS check on cross-origin requests actually passes.
+      - key: FRONTEND_ORIGIN
+        value: http://localhost:5173
+
+databases:
+  - name: mag-be-db
+    plan: free
+    databaseName: ecommerce
+    user: ecommerce
