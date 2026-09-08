@@ -168,23 +168,14 @@ on running order.
 
 ## CI
 
-`.github/workflows/ci.yml` (one level up, at `backend-starter/`) runs on
-every push/PR to `main`: spins up a throwaway `postgres:16` service
-container, installs deps, type-checks (`tsc --noEmit`), applies
-`db/schema.sql` to it, then runs `npm test`. No secrets or `.env` files
-needed — `DATABASE_URL`/`JWT_SECRET` are set directly as job env vars.
+`.github/workflows/ci.yml` runs on every push/PR to `main`: spins up a
+throwaway `postgres:16` service container, installs deps, type-checks
+(`tsc --noEmit`), applies `db/schema.sql` to it, then runs `npm test`. No
+secrets or `.env` files needed — `DATABASE_URL`/`JWT_SECRET` are set
+directly as job env vars.
 
-This only runs once the project is pushed to GitHub. There's no git repo
-here yet — to enable it:
-```
-cd ..
-git init
-git add .
-git commit -m "Initial commit"
-git branch -M main
-git remote add origin <your-repo-url>
-git push -u origin main
-```
+Pushed to [inicula1989ro/be-practice](https://github.com/inicula1989ro/be-practice)
+— check the Actions tab there for run results.
 
 ## Notes
 
