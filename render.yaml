@@ -4,7 +4,11 @@ services:
     runtime: node
     plan: free
     branch: main
-    buildCommand: npm ci && npm run build
+    # NODE_ENV=production (set below, for runtime) also affects npm during
+    # the build step — npm skips devDependencies under it by default, which
+    # is where typescript and all the @types/* packages live, so the build
+    # fails without --include=dev forcing them in anyway.
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /products
     envVars:
