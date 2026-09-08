@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Corner Store</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>Corner Store</h1>
+    <div class="customer-picker">
+      <a href="/new-product.html" class="ghost-btn">Add product</a>
+      <span id="userEmail"></span>
+      <button id="logout" class="ghost-btn">Log out</button>
+    </div>
+  </header>
+
+  <div id="banner" class="banner hidden"></div>
+
+  <main class="layout">
+    <section class="products">
+      <div class="section-head">
+        <h2>Products</h2>
+        <button id="refresh" class="ghost-btn">Refresh</button>
+      </div>
+      <div id="productGrid" class="product-grid"></div>
+    </section>
+
+    <aside class="cart">
+      <h2>Cart</h2>
+      <div id="cartItems" class="cart-items"></div>
+      <div class="cart-total">
+        <span>Total</span>
+        <span id="cartTotal">$0.00</span>
+      </div>
+      <button id="checkout" class="primary-btn" disabled>Place order</button>
+
+      <div class="order-history">
+        <div class="section-head">
+          <h2>Order history</h2>
+          <button id="loadOrders" class="ghost-btn">Load</button>
+        </div>
+        <div id="orderHistory"></div>
+      </div>
+    </aside>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

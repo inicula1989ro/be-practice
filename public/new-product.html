@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Corner Store — Manage Products</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>Corner Store</h1>
+    <a href="/" class="ghost-btn">Back to store</a>
+  </header>
+
+  <div id="banner" class="banner hidden"></div>
+
+  <main class="auth-layout">
+    <div class="auth-card">
+      <h2 style="margin-top: 0;">Add a product</h2>
+
+      <form id="productForm" class="auth-form">
+        <label>
+          Name
+          <input type="text" name="name" required />
+        </label>
+        <label>
+          Category
+          <input type="text" name="category" required placeholder="e.g. electronics" />
+        </label>
+        <label>
+          Price
+          <input type="number" name="price" min="0.01" step="0.01" required />
+        </label>
+        <label>
+          Stock
+          <input type="number" name="stock" min="0" step="1" required />
+        </label>
+        <button type="submit" class="primary-btn">Create product</button>
+      </form>
+    </div>
+  </main>
+
+  <section class="manage-section">
+    <div class="section-head">
+      <h2>Manage products</h2>
+      <button id="refresh" class="ghost-btn">Refresh</button>
+    </div>
+    <div id="productList" class="product-list"></div>
+  </section>
+
+  <script src="/new-product.js"></script>
+</body>
+</html>
