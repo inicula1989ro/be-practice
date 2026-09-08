@@ -6,4 +6,11 @@ import { Pool } from 'pg';
 // real dev data in `ecommerce`.
 dotenv.config({ path: process.env.VITEST ? '.env.test' : '.env' });
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+export const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  // Render's managed Postgres presents a self-signed cert, so verifying it
+  // against a public CA (the pg default) fails; this trusts it without
+  // trying to validate the chain. Only applied in production — local/dev
+  // and CI both talk to plain, unencrypted Postgres.
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+});
