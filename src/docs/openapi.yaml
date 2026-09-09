@@ -1,0 +1,426 @@
+openapi: 3.0.3
+info:
+  title: Corner Store API
+  description: >
+    Product catalog, JWT auth, and order placement backed by a real
+    database transaction (stock is checked and decremented atomically,
+    with rollback on failure).
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+    description: Local development
+tags:
+  - name: Auth
+  - name: Products
+  - name: Orders
+
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Create an account
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credentials'
+      responses:
+        '201':
+          description: Account created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+        '400':
+          description: Missing/invalid email, or password under 8 characters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Log in and receive a bearer token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credentials'
+      responses:
+        '200':
+          description: Login succeeded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      token:
+                        type: string
+                        description: JWT bearer token, expires in 1 hour
+                      user:
+                        $ref: '#/components/schemas/User'
+        '404':
+          description: >
+            No account with that email, or the password was wrong — both
+            return the same status and message, so a failed login never
+            reveals whether the email is registered.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /products:
+    get:
+      tags: [Products]
+      summary: List all products
+      security: []
+      responses:
+        '200':
+          description: Product list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+    post:
+      tags: [Products]
+      summary: Create a product
+      description: Any authenticated user can create a product — there's no admin/regular-user distinction yet.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductInput'
+      responses:
+        '201':
+          description: Product created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Product'
+        '400':
+          description: Invalid product data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /products/{id}:
+    patch:
+      tags: [Products]
+      summary: Update a product
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      requestBody:
+        required: true
+        description: Any non-empty subset of the product's fields.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductUpdateInput'
+      responses:
+        '200':
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Product'
+        '400':
+          description: Empty body or invalid field values
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Products]
+      summary: Delete a product
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      responses:
+        '204':
+          description: Product deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Product is referenced by an existing order (ON DELETE RESTRICT)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /orders:
+    post:
+      tags: [Orders]
+      summary: Place an order
+      description: >
+        Runs as a single database transaction: stock is checked and
+        decremented for every item, with SELECT ... FOR UPDATE locking
+        each product row for the transaction's duration. Any item that
+        can't be fulfilled rolls back the entire order.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderInput'
+      responses:
+        '201':
+          description: Order placed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: integer
+                    description: The new order's id
+                    example: 42
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: One of the requested products doesn't exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Insufficient stock for one of the requested products — the whole order is rolled back
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/{id}/orders:
+    get:
+      tags: [Orders]
+      summary: Order history for a user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Must match the authenticated user's own id
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: >
+            Order rows joined with their line items — one row per
+            (order, product) pair. Group by order_id client-side to
+            reconstruct individual orders.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/OrderLine'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The path id doesn't match the authenticated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    ProductId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+
+  responses:
+    Unauthorized:
+      description: Missing, invalid, or expired bearer token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            message:
+              type: string
+      example:
+        error:
+          message: Product not found
+
+    Credentials:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 8
+      example:
+        email: alice@example.com
+        password: password123
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+          format: email
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        category:
+          type: string
+        price:
+          type: string
+          description: Decimal amount, returned as a string (Postgres NUMERIC)
+          example: '25.00'
+        stock:
+          type: integer
+
+    ProductInput:
+      type: object
+      required: [name, category, price, stock]
+      properties:
+        name:
+          type: string
+        category:
+          type: string
+        price:
+          type: number
+          format: float
+          minimum: 0.01
+        stock:
+          type: integer
+          minimum: 0
+      example:
+        name: Mouse
+        category: electronics
+        price: 25
+        stock: 10
+
+    ProductUpdateInput:
+      type: object
+      minProperties: 1
+      properties:
+        name:
+          type: string
+        category:
+          type: string
+        price:
+          type: number
+          format: float
+          minimum: 0.01
+        stock:
+          type: integer
+          minimum: 0
+      example:
+        price: 30
+
+    OrderInput:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [productId, quantity]
+            properties:
+              productId:
+                type: integer
+              quantity:
+                type: integer
+                minimum: 1
+      example:
+        items:
+          - productId: 1
+            quantity: 2
+
+    OrderLine:
+      type: object
+      properties:
+        order_id:
+          type: integer
+        status:
+          type: string
+          example: paid
+        created_at:
+          type: string
+          format: date-time
+        product_name:
+          type: string
+        quantity:
+          type: integer
+        unit_price:
+          type: string
+          example: '25.00'
+
+security:
+  - bearerAuth: []

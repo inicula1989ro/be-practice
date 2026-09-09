@@ -1,10 +1,18 @@
 import express from 'express';
 import cors from 'cors';
+import swaggerUi from 'swagger-ui-express';
+import YAML from 'js-yaml';
+import fs from 'fs';
+import path from 'path';
 
 import authRoutes from './modules/auth/auth.routes';
 import productsRoutes from './modules/products/products.routes';
 import ordersRoutes from './modules/orders/orders.routes';
 import { errorHandler } from './middleware/errorHandler';
+
+const openapiDocument = YAML.load(
+  fs.readFileSync(path.join(__dirname, 'docs', 'openapi.yaml'), 'utf8')
+) as Record<string, any>;
 
 export const app = express();
 
@@ -18,6 +26,7 @@ const allowedOrigins = (process.env.FRONTEND_ORIGIN ?? 'http://localhost:5173')
 
 app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(openapiDocument));
 
 app.use('/auth', authRoutes);
 app.use('/products', productsRoutes);
